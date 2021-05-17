@@ -29,6 +29,8 @@ impl EventHandler for Handler{
             
             if let Err(why) = message.channel_id.send_message(&ctx.http, |m|{
 
+                m.reference_message(&message);
+
                 m.embed(|mut e| {
                     e.title(format!("{}'s Credit Score", nickname));
                     e.description(format!("Your Credit Score is {}", credit_score));
@@ -56,9 +58,20 @@ impl EventHandler for Handler{
 
             if let Err(why) = message.channel_id.send_message(&ctx.http, |m|{
 
+                m.reference_message(&message);
+
                 m.embed(|mut e| {
                     e.title(format!("{}'s Credit Score", nickname));
-                    e.description(format!("Your Credit Score is {}, from {}", latest_score, prev_score));
+
+                    if latest_score > prev_score {
+                        e.description(format!("Your Credit Score is {}, from {} :chart_with_upwards_trend:", latest_score, prev_score));
+                    } else if latest_score < prev_score {
+                        e.description(format!("Your Credit Score is {}, from {} :chart_with_downwards_trend:", latest_score, prev_score));
+                    } else {
+                        e.description(format!("Your Credit Score is {}, from {}", latest_score, prev_score));
+                    }
+
+                    
                     e.thumbnail("https://cdn.discordapp.com/attachments/194593895647019008/843289961309929492/magik.png");
             
                     e
@@ -74,6 +87,8 @@ impl EventHandler for Handler{
     async fn ready(&self, _ctx: Context, _data_about_bot: Ready) {
         println!("Connected as {}:{}", _data_about_bot.user.name, _data_about_bot.user.discriminator)
     }
+
+
 
 }
 
@@ -147,7 +162,11 @@ async fn credit_check_hit(credit_score: &i16, user_id: &u64) -> Result<i16, csv:
     let mut cmd_writer = csv::WriterBuilder::new()
         .from_writer(fs::OpenOptions::new().append(true).open("credit_scores.csv").unwrap());
 
-    let credit_hit = fastrand::i16(0..100);
+    let mut credit_hit = fastrand::i16(0..20);
+    let good_luck = fastrand::i8(1..11);
+    if good_luck == 7 {
+        credit_hit = -credit_hit*5;
+    }
     let new_credit_score = *credit_score-credit_hit;
 
     cmd_writer.write_record(&[user_id.to_string(),new_credit_score.to_string()])?;
